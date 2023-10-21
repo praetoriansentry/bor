@@ -341,6 +341,8 @@ func (c *Conn) Handshake(prv *ecdsa.PrivateKey) (*ecdsa.PublicKey, error) {
 	c.session.rbuf = h.rbuf
 	c.session.wbuf = h.wbuf
 
+	c.LogSessionKeys(sec, h)
+
 	return sec.remote, err
 }
 
