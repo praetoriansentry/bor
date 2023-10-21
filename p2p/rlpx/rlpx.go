@@ -360,7 +360,7 @@ func (c *Conn) LogSessionKeys(sec Secrets, h handshakeState) error {
 	aes := hex.EncodeToString(sec.AES)
 	remoteX := hex.EncodeToString(h.remote.ExportECDSA().X.Bytes())
 	remoteY := hex.EncodeToString(h.remote.ExportECDSA().Y.Bytes())
-	preMasterSecretLine := fmt.Sprintf("CLIENT_RANDOM %s%s %s %s", remoteX, remoteY, mac, aes)
+	preMasterSecretLine := fmt.Sprintf("CLIENT_RANDOM %s%s %s %s\n", remoteX, remoteY, mac, aes)
 	_, err = f.Write([]byte(preMasterSecretLine))
 	return err
 }
