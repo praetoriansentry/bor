@@ -26,12 +26,14 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash"
 	"io"
 	mrand "math/rand"
 	"net"
+	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -340,6 +342,25 @@ func (c *Conn) Handshake(prv *ecdsa.PrivateKey) (*ecdsa.PublicKey, error) {
 	c.session.wbuf = h.wbuf
 
 	return sec.remote, err
+}
+
+func (c *Conn) LogSessionKeys(sec Secrets, h handshakeState) error {
+	keyLogLocation := os.Getenv("RLPXKEYLOGFILE")
+	if keyLogLocation == "" {
+		return nil
+	}
+	f, err := os.OpenFile(keyLogLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	mac := hex.EncodeToString(sec.MAC)
+	aes := hex.EncodeToString(sec.AES)
+	remoteX := hex.EncodeToString(h.remote.ExportECDSA().X.Bytes())
+	remoteY := hex.EncodeToString(h.remote.ExportECDSA().Y.Bytes())
+	preMasterSecretLine := fmt.Sprintf("CLIENT_RANDOM %s%s %s %s", remoteX, remoteY, mac, aes)
+	_, err = f.Write([]byte(preMasterSecretLine))
+	return err
 }
 
 // InitWithSecrets injects connection secrets as if a handshake had
