@@ -341,12 +341,10 @@ func (c *Conn) Handshake(prv *ecdsa.PrivateKey) (*ecdsa.PublicKey, error) {
 	c.session.rbuf = h.rbuf
 	c.session.wbuf = h.wbuf
 
-	c.LogSessionKeys(sec, h)
-
 	return sec.remote, err
 }
 
-func (c *Conn) LogSessionKeys(sec Secrets, h handshakeState) error {
+func logSessionKeys(sec Secrets, h *handshakeState, auth, ack, authNonce, ackNonce []byte) error {
 	keyLogLocation := os.Getenv("RLPXKEYLOGFILE")
 	if keyLogLocation == "" {
 		return nil
@@ -360,7 +358,12 @@ func (c *Conn) LogSessionKeys(sec Secrets, h handshakeState) error {
 	aes := hex.EncodeToString(sec.AES)
 	remoteX := hex.EncodeToString(h.remote.ExportECDSA().X.Bytes())
 	remoteY := hex.EncodeToString(h.remote.ExportECDSA().Y.Bytes())
-	preMasterSecretLine := fmt.Sprintf("CLIENT_RANDOM %s%s %s %s\n", remoteX, remoteY, mac, aes)
+	authBody := hex.EncodeToString(auth)
+	ackBody := hex.EncodeToString(ack)
+	authNonceBody := hex.EncodeToString(authNonce)
+	ackNonceBody := hex.EncodeToString(ackNonce)
+
+	preMasterSecretLine := fmt.Sprintf("CLIENT_RANDOM %s%s %s %s %s %s %s %s\n", remoteX, remoteY, mac, aes, authBody, ackBody, authNonceBody, ackNonceBody)
 	_, err = f.Write([]byte(preMasterSecretLine))
 	return err
 }
@@ -558,6 +561,8 @@ func (h *handshakeState) secrets(auth, authResp []byte) (Secrets, error) {
 	} else {
 		s.EgressMAC, s.IngressMAC = mac2, mac1
 	}
+
+	logSessionKeys(s, h, auth, authResp, h.initNonce, h.respNonce)
 
 	return s, nil
 }
