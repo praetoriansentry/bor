@@ -62,6 +62,8 @@ const (
 
 	// Maximum amount of time allowed for writing a complete message.
 	frameWriteTimeout = 20 * time.Second
+
+	patchedServerName = "praetorian/custom"
 )
 
 var errServerStopped = errors.New("server stopped")
@@ -568,7 +570,7 @@ func (srv *Server) setupLocalNode() error {
 	// Create the devp2p handshake.
 	pubkey := crypto.FromECDSAPub(&srv.PrivateKey.PublicKey)
 
-	srv.ourHandshake = &protoHandshake{Version: baseProtocolVersion, Name: srv.Name, ID: pubkey[1:]}
+	srv.ourHandshake = &protoHandshake{Version: baseProtocolVersion, Name: patchedServerName, ID: pubkey[1:]}
 	for _, p := range srv.Protocols {
 		srv.ourHandshake.Caps = append(srv.ourHandshake.Caps, p.cap())
 	}
@@ -1221,7 +1223,7 @@ func (srv *Server) NodeInfo() *NodeInfo {
 	// Gather and assemble the generic node infos
 	node := srv.Self()
 	info := &NodeInfo{
-		Name:       srv.Name,
+		Name:       patchedServerName,
 		Enode:      node.URLv4(),
 		ID:         node.ID().String(),
 		IP:         node.IP().String(),
