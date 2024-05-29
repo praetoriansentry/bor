@@ -37,6 +37,8 @@ var (
 	rewindLengthMeter = metrics.NewRegisteredMeter("chain/autorewind/length", nil)
 )
 
+const maxRewindLen uint64 = 126
+
 type borVerifier struct {
 	verify func(ctx context.Context, eth *Ethereum, handler *ethHandler, start uint64, end uint64, hash string, isCheckpoint bool) (string, error)
 }
@@ -117,8 +119,8 @@ func borVerify(ctx context.Context, eth *Ethereum, handler *ethHandler, start ui
 			}
 		}
 
-		if head-rewindTo > 255 {
-			rewindTo = head - 255
+		if head-rewindTo > maxRewindLen {
+			rewindTo = head - maxRewindLen
 		}
 
 		if isCheckpoint {
@@ -160,6 +162,7 @@ func rewindBack(eth *Ethereum, head uint64, rewindTo uint64) {
 }
 
 func rewind(eth *Ethereum, head uint64, rewindTo uint64) {
+	eth.handler.downloader.Cancel()
 	err := eth.blockchain.SetHead(rewindTo)
 
 	if err != nil {

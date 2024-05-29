@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/trie"
 )
 
 func TestChain2HeadEvent(t *testing.T) {
@@ -23,7 +24,7 @@ func TestChain2HeadEvent(t *testing.T) {
 			Config: params.TestChainConfig,
 			Alloc:  GenesisAlloc{addr1: {Balance: big.NewInt(10000000000000000)}},
 		}
-		genesis = gspec.MustCommit(db)
+		genesis = gspec.MustCommit(db, trie.NewDatabase(db, trie.HashDefaults))
 		signer  = types.LatestSigner(gspec.Config)
 	)
 
@@ -117,7 +118,7 @@ func TestChain2HeadEvent(t *testing.T) {
 		}})
 
 	// reorg event
-	//In this event the channel recieves an array of Blocks in NewChain and OldChain
+	//In this event the channel receives an array of Blocks in NewChain and OldChain
 	readEvent(&eventTest{
 		Type: Chain2HeadReorgEvent,
 		Added: []common.Hash{

@@ -79,7 +79,6 @@ func getChain() *core.BlockChain {
 		TrieDirtyLimit:      0,
 		TrieTimeLimit:       5 * time.Minute,
 		TrieCleanNoPrefetch: true,
-		TrieCleanRejournal:  0,
 		SnapshotLimit:       100,
 		SnapshotWait:        true,
 	}
@@ -158,21 +157,4 @@ func doFuzz(input []byte, obj interface{}, code int) int {
 	}
 
 	return 1
-}
-
-// To run a fuzzer, do
-// $ CGO_ENABLED=0 go-fuzz-build -func FuzzTrieNodes
-// $ go-fuzz
-
-func FuzzARange(input []byte) int {
-	return doFuzz(input, &snap.GetAccountRangePacket{}, snap.GetAccountRangeMsg)
-}
-func FuzzSRange(input []byte) int {
-	return doFuzz(input, &snap.GetStorageRangesPacket{}, snap.GetStorageRangesMsg)
-}
-func FuzzByteCodes(input []byte) int {
-	return doFuzz(input, &snap.GetByteCodesPacket{}, snap.GetByteCodesMsg)
-}
-func FuzzTrieNodes(input []byte) int {
-	return doFuzz(input, &snap.GetTrieNodesPacket{}, snap.GetTrieNodesMsg)
 }
