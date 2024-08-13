@@ -38,7 +38,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	ethproto "github.com/ethereum/go-ethereum/eth/protocols/eth"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/les"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/node"
@@ -553,7 +552,7 @@ func (s *Service) login(conn *connWrapper) error {
 	if info := infos.Protocols["eth"]; info != nil {
 		network = fmt.Sprintf("%d", info.(*ethproto.NodeInfo).Network)
 	} else {
-		network = fmt.Sprintf("%d", infos.Protocols["les"].(*les.NodeInfo).Network)
+		return errors.New("no eth protocol available")
 	}
 
 	auth := &authMsg{
@@ -733,6 +732,12 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 				log.Error("Failed to retrieve block by number", "err", err)
 				return nil
 			}
+		}
+
+		// It's weird, but it's possible that the block is nil here.
+		// even though the check for error is done above.
+		if block == nil {
+			return nil
 		}
 
 		header = block.Header()

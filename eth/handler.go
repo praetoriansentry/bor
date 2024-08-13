@@ -196,6 +196,10 @@ func newHandler(config *handlerConfig) (*handler, error) {
 			log.Info("Enabled snap sync", "head", head.Number, "hash", head.Hash())
 		}
 	}
+	// If snap sync is requested but snapshots are disabled, fail loudly
+	if h.snapSync.Load() && config.Chain.Snapshots() == nil {
+		return nil, errors.New("snap sync not supported with snapshots disabled")
+	}
 	// Construct the downloader (long sync)
 	h.downloader = downloader.New(config.Database, h.eventMux, h.chain, nil, h.removePeer, h.enableSyncedFeatures, config.checker)
 	if ttd := h.chain.Config().TerminalTotalDifficulty; ttd != nil {
@@ -606,13 +610,30 @@ func (h *handler) BroadcastBlock(block *types.Block, propagate bool) {
 			log.Error("Propagating dangling block", "number", block.Number(), "hash", hash)
 			return
 		}
+
+		// These are the static and trusted peers which are not
+		// in `transfer := peers[:int(math.Sqrt(float64(len(peers))))]`
+		staticAndTrustedPeers := []*ethPeer{}
+
+		for _, peer := range peers[int(math.Sqrt(float64(len(peers)))):] {
+			if peer.IsTrusted() || peer.IsStatic() {
+				staticAndTrustedPeers = append(staticAndTrustedPeers, peer)
+			}
+		}
+
 		// Send the block to a subset of our peers
 		transfer := peers[:int(math.Sqrt(float64(len(peers))))]
 		for _, peer := range transfer {
 			peer.AsyncSendNewBlock(block, td)
 		}
 
-		log.Trace("Propagated block", "hash", hash, "recipients", len(transfer), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
+		// Send the block to the trusted and static peers
+		for _, peer := range staticAndTrustedPeers {
+			log.Trace("Propagating block to static and trusted peer", "hash", hash, "peerID", peer.ID())
+			peer.AsyncSendNewBlock(block, td)
+		}
+
+		log.Debug("Propagated block", "hash", hash, "recipients", len(transfer), "static and trusted recipients", len(staticAndTrustedPeers), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
 
 		return
 	}
@@ -622,7 +643,7 @@ func (h *handler) BroadcastBlock(block *types.Block, propagate bool) {
 			peer.AsyncSendNewBlockHash(block)
 		}
 
-		log.Trace("Announced block", "hash", hash, "recipients", len(peers), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
+		log.Debug("Announced block", "hash", hash, "recipients", len(peers), "duration", common.PrettyDuration(time.Since(block.ReceivedAt)))
 	}
 }
 
